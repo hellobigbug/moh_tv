@@ -1,0 +1,68 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohtv-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: mohtv-debug.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: mohtv-debug.apk
+          body: |
+            # MOH TV 安卓TV直播客户端
+
+            自动构建版本
+
+            ## 更新内容
+            - 自动打包构建
+
+            ## 安装说明
+            1. 下载下方APK文件
+            2. 安装到Android TV/盒子设备
+            3. 首次使用请更新直播源
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

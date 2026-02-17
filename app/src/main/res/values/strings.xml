@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MOH TV</string>
+    <string name="home">首页</string>
+    <string name="channels">频道</string>
+    <string name="favorites">收藏</string>
+    <string name="settings">设置</string>
+    <string name="loading">加载中...</string>
+    <string name="error_loading">加载失败</string>
+    <string name="retry">重试</string>
+    <string name="no_channels">暂无频道</string>
+    <string name="no_favorites">暂无收藏</string>
+    <string name="play">播放</string>
+    <string name="pause">暂停</string>
+    <string name="volume">音量</string>
+    <string name="quality">清晰度</string>
+    <string name="auto">自动</string>
+    <string name="update_sources">更新源</string>
+    <string name="source_updated">源已更新</string>
+    <string name="update_failed">更新失败</string>
+    <string name="add_source">添加源</string>
+    <string name="source_url">源地址</string>
+    <string name="source_name">源名称</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="delete">删除</string>
+    <string name="confirm_delete">确认删除？</string>
+    <string name="source_management">源管理</string>
+    <string name="auto_update">自动更新</string>
+    <string name="update_interval">更新间隔</string>
+    <string name="daily">每日</string>
+    <string name="about">关于</string>
+    <string name="version">版本</string>
+    <string name="channel_info">频道信息</string>
+    <string name="playback_speed">播放速度</string>
+    <string name="network_error">网络错误</string>
+    <string name="stream_error">播放错误</string>
+    <string name="no_network">无网络连接</string>
+    <string name="search">搜索</string>
+    <string name="recent">最近观看</string>
+    <string name="all_channels">全部频道</string>
+    <string name="cctv">央视</string>
+    <string name="satellite">卫视</string>
+    <string name="local">地方台</string>
+    <string name="sports">体育</string>
+    <string name="entertainment">影视</string>
+</resources>
