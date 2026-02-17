@@ -241,6 +241,7 @@ fun ChannelList(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChannelItem(
     channel: ChannelEntity,
