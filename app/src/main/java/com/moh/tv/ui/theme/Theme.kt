@@ -50,13 +50,19 @@ object AppleTVColors {
     val TextQuaternary = Color(0xFF636366)
     
     val FocusGlow = Color(0xFFFFFFFF)
-    val FocusBorder = Color(0xFFFFFFFF)
-    
+    val FocusBorder = Color(0xFF2997FF)  // 遥控器聚焦时使用蓝色边框
+    val FocusBorderStrong = Color(0xFF0A84FF)
+
     val SelectedBackground = Color(0xFF2997FF).copy(alpha = 0.15f)
     val SelectedBorder = Color(0xFF2997FF)
     val SelectedGlow = Color(0xFF2997FF).copy(alpha = 0.3f)
-    
+
     val HoverBackground = Color(0xFF3A3A3C)
+
+    // 遥控器导航专用颜色
+    val RemoteFocusBackground = Color(0xFF2997FF).copy(alpha = 0.25f)
+    val RemoteFocusBorder = Color(0xFF2997FF)
+    val RemoteFocusGlow = Color(0xFF2997FF).copy(alpha = 0.5f)
 }
 
 object AppleTVShapes {

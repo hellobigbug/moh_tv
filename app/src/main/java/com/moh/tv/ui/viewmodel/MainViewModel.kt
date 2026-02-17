@@ -25,16 +25,20 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isUpdating: Boolean = false,
     val isSearchingSources: Boolean = false,
+    val isDetectingSources: Boolean = false,
     val discoveredSources: List<com.moh.tv.data.remote.DiscoveredSource> = emptyList(),
+    val sourceTestResults: List<com.moh.tv.data.remote.AutoSourceDetector.SourceTestResult> = emptyList(),
     val error: String? = null,
-    val updateMessage: String? = null
+    val updateMessage: String? = null,
+    val focusedItemIndex: Int = -1 // 当前遥控器聚焦的项索引
 )
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val sourceRepository: SourceRepository,
-    private val sourceSyncManager: SourceSyncManager
+    private val sourceSyncManager: SourceSyncManager,
+    private val autoSourceDetector: AutoSourceDetector
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -52,14 +56,64 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val sources = sourceRepository.getAllSources().first()
             if (sources.isEmpty()) {
+                _uiState.update { it.copy(isDetectingSources = true, updateMessage = "正在检测最佳直播源...") }
+
+                // 添加默认源
                 sourceRepository.addDefaultSources()
-                // 添加默认源后立即同步第一个启用的源
-                val newSources = sourceRepository.getEnabledSources().first()
-                newSources.firstOrNull()?.let { source ->
+
+                // 获取所有默认源并检测最佳源
+                val allSources = sourceRepository.getAllSources().first()
+                val testResults = autoSourceDetector.detectBestSources(allSources)
+
+                _uiState.update {
+                    it.copy(
+                        isDetectingSources = false,
+                        sourceTestResults = testResults,
+                        updateMessage = "检测到 ${testResults.size} 个可用源"
+                    )
+                }
+
+                // 自动选择最佳源并同步
+                val bestSource = testResults.firstOrNull()?.source
+                    ?: allSources.firstOrNull { it.enabled }
+
+                bestSource?.let { source ->
+                    _uiState.update { it.copy(selectedSourceId = source.id) }
                     sourceSyncManager.syncSingleSource(source)
                 }
             }
         }
+    }
+
+    /**
+     * 手动触发源检测
+     */
+    fun detectSources() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDetectingSources = true, updateMessage = "正在检测源质量...") }
+
+            val allSources = sourceRepository.getAllSources().first()
+            val testResults = autoSourceDetector.detectBestSources(allSources)
+
+            _uiState.update {
+                it.copy(
+                    isDetectingSources = false,
+                    sourceTestResults = testResults,
+                    updateMessage = "检测完成，${testResults.size} 个源可用"
+                )
+            }
+        }
+    }
+
+    /**
+     * 设置当前聚焦项索引（用于遥控器导航显示）
+     */
+    fun setFocusedItemIndex(index: Int) {
+        _uiState.update { it.copy(focusedItemIndex = index) }
+    }
+
+    fun clearSourceTestResults() {
+        _uiState.update { it.copy(sourceTestResults = emptyList()) }
     }
 
     private fun loadData() {

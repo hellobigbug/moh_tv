@@ -84,6 +84,11 @@ fun SettingsScreen(
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     AppleTVSettingsButton(
+                                        text = "检测源质量",
+                                        icon = Icons.Default.NetworkCheck,
+                                        onClick = { viewModel.detectSources() }
+                                    )
+                                    AppleTVSettingsButton(
                                         text = "搜索GitHub源",
                                         icon = Icons.Default.Search,
                                         onClick = { viewModel.searchGithubSources() }
@@ -117,6 +122,40 @@ fun SettingsScreen(
                         onToggle = { viewModel.toggleSourceEnabled(source.id, !source.enabled) },
                         onDelete = { showDeleteConfirmDialog = source }
                     )
+                }
+
+                // 显示源质量检测结果
+                if (uiState.sourceTestResults.isNotEmpty()) {
+                    item {
+                        AppleTVSettingsSection(title = "源质量检测结果") {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "可用源: ${uiState.sourceTestResults.size} 个",
+                                        color = AppleTVColors.TextSecondary,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    AppleTVSettingsButton(
+                                        text = "清除结果",
+                                        icon = Icons.Default.Clear,
+                                        onClick = { viewModel.clearSourceTestResults() }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(uiState.sourceTestResults, key = { it.source.id }) { result ->
+                        SourceTestResultItem(
+                            result = result,
+                            isBest = result == uiState.sourceTestResults.first(),
+                            onSelect = { viewModel.selectSource(result.source.id) }
+                        )
+                    }
                 }
 
                 // 显示搜索到的GitHub源
@@ -1436,6 +1475,135 @@ fun DiscoveredSourceItem(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SourceTestResultItem(
+    result: com.moh.tv.data.remote.AutoSourceDetector.SourceTestResult,
+    isBest: Boolean,
+    onSelect: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.03f else 1f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "scale"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isFocused -> AppleTVColors.RemoteFocusBorder
+            isBest -> AppleTVColors.Secondary
+            else -> Color.Transparent
+        },
+        animationSpec = tween(200),
+        label = "borderColor"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .focusable()
+            .onFocusEvent { isFocused = it.isFocused },
+        shape = AppleTVShapes.CardMedium,
+        color = if (isBest) AppleTVColors.Secondary.copy(alpha = 0.1f) else AppleTVColors.Surface,
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isFocused) 3.dp else if (isBest) 2.dp else 1.dp,
+            color = borderColor
+        ),
+        onClick = onSelect
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = result.source.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isFocused) AppleTVColors.Primary else AppleTVColors.TextPrimary,
+                        fontWeight = if (isBest) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (isBest) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = AppleTVColors.Secondary
+                        ) {
+                            Text(
+                                text = "推荐",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                color = AppleTVColors.OnPrimary,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "${result.channelCount} 个频道 · 响应时间 ${result.responseTime}ms",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppleTVColors.TextSecondary
+                )
+
+                // 质量评分条
+                LinearProgressIndicator(
+                    progress = { (result.score / 100).toFloat() },
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = when {
+                        result.score >= 80 -> AppleTVColors.Secondary
+                        result.score >= 50 -> AppleTVColors.AccentOrange
+                        else -> AppleTVColors.Error
+                    },
+                    trackColor = AppleTVColors.SurfaceVariant,
+                )
+            }
+
+            // 评分显示
+            Surface(
+                shape = CircleShape,
+                color = when {
+                    result.score >= 80 -> AppleTVColors.Secondary
+                    result.score >= 50 -> AppleTVColors.AccentOrange
+                    else -> AppleTVColors.Error
+                }
+            ) {
+                Text(
+                    text = "${result.score.toInt()}",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = AppleTVColors.OnPrimary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // 左侧聚焦指示器
+        if (isFocused) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(AppleTVColors.RemoteFocusBorder)
+            )
         }
     }
 }
