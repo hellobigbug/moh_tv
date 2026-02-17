@@ -23,7 +23,7 @@ import com.moh.tv.data.local.entity.ChannelEntity
 import com.moh.tv.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(
     onChannelClick: (ChannelEntity) -> Unit,

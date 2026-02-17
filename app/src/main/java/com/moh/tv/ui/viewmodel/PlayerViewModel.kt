@@ -75,7 +75,9 @@ class PlayerViewModel @Inject constructor(
         }
 
         playerManager.play(channel.id, channel.url)
-        channelRepository.updateWatchTime(channel.id)
+        viewModelScope.launch {
+            channelRepository.updateWatchTime(channel.id)
+        }
 
         startPositionUpdate()
         showControlsTemporarily()

@@ -123,7 +123,6 @@ fun PlayerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .focusable(enabled = true)
-                .systemUiVisibility()
         ) {
             DisposableEffect(Unit) {
                 onDispose {
