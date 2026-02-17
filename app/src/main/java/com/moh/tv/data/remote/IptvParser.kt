@@ -32,7 +32,14 @@ class IptvParser @Inject constructor() {
             }
 
             val body = response.body?.string() ?: return emptyList()
-            parseM3UContent(body)
+
+            // 根据内容类型或URL后缀判断格式
+            when {
+                url.endsWith(".txt", ignoreCase = true) -> parseTxtContent(body)
+                body.trimStart().startsWith("#EXTM3U", ignoreCase = true) -> parseM3UContent(body)
+                body.contains("#EXTINF:") -> parseM3UContent(body)
+                else -> parseTxtContent(body) // 默认尝试txt格式
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
@@ -97,6 +104,43 @@ class IptvParser @Inject constructor() {
         }
 
         return info
+    }
+
+    private fun parseTxtContent(content: String): List<Channel> {
+        val channels = mutableListOf<Channel>()
+        val lines = content.lines()
+        var currentGroup = "未分类"
+
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) continue
+
+            // 检查是否是分组标题（例如：央视台,#genre#）
+            if (trimmed.contains("#genre#") || trimmed.contains(",#")) {
+                currentGroup = trimmed.substringBefore(",#").substringBefore("#genre#").trim()
+                continue
+            }
+
+            // 解析频道行（格式：频道名,URL）
+            val parts = trimmed.split(",")
+            if (parts.size >= 2) {
+                val name = parts[0].trim()
+                val url = parts[1].trim()
+
+                if (url.startsWith("http")) {
+                    channels.add(
+                        Channel(
+                            name = name,
+                            url = url,
+                            group = currentGroup,
+                            logo = "",
+                            epgUrl = ""
+                        )
+                    )
+                }
+            }
+        }
+        return channels
     }
 
     fun groupChannels(channels: List<Channel>): List<ChannelGroup> {

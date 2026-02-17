@@ -114,6 +114,9 @@ class SourceSyncManager @Inject constructor(
                 )
             }
 
+            // 保存频道到数据库
+            channelRepository.deleteAllChannels()
+            channelRepository.saveChannels(entities)
             sourceRepository.updateLastUpdate(source.id)
 
             UpdateResult(

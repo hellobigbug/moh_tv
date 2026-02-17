@@ -26,6 +26,7 @@ import com.moh.tv.player.PlayerManager
 import com.moh.tv.ui.navigation.AppNavGraph
 import com.moh.tv.ui.theme.AppleTVColors
 import com.moh.tv.ui.theme.MOHTVTheme
+import com.moh.tv.worker.SourceUpdateWorker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +40,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 启动自动更新任务
+        SourceUpdateWorker.schedule(this)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 

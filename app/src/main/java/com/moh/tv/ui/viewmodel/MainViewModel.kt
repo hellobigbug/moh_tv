@@ -24,6 +24,8 @@ data class MainUiState(
     val selectedSourceId: Long? = null,
     val isLoading: Boolean = false,
     val isUpdating: Boolean = false,
+    val isSearchingSources: Boolean = false,
+    val discoveredSources: List<com.moh.tv.data.remote.DiscoveredSource> = emptyList(),
     val error: String? = null,
     val updateMessage: String? = null
 )
@@ -42,7 +44,22 @@ class MainViewModel @Inject constructor(
     val selectedGroup: StateFlow<String> = _selectedGroup.asStateFlow()
 
     init {
+        initializeDefaultSources()
         loadData()
+    }
+
+    private fun initializeDefaultSources() {
+        viewModelScope.launch {
+            val sources = sourceRepository.getAllSources().first()
+            if (sources.isEmpty()) {
+                sourceRepository.addDefaultSources()
+                // 添加默认源后立即同步第一个启用的源
+                val newSources = sourceRepository.getEnabledSources().first()
+                newSources.firstOrNull()?.let { source ->
+                    sourceSyncManager.syncSingleSource(source)
+                }
+            }
+        }
     }
 
     private fun loadData() {
@@ -82,13 +99,15 @@ class MainViewModel @Inject constructor(
             sourceRepository.getAllSources().collect { sources ->
                 val currentSelectedId = _uiState.value.selectedSourceId
                 val shouldAutoSelect = currentSelectedId == null && sources.isNotEmpty()
-                
+
                 _uiState.update { it.copy(sources = sources) }
-                
+
                 if (shouldAutoSelect) {
-                    val defaultSource = sources.first { it.enabled }
-                    _uiState.update { it.copy(selectedSourceId = defaultSource.id) }
-                    sourceSyncManager.syncSingleSource(defaultSource)
+                    val defaultSource = sources.firstOrNull { it.enabled }
+                    if (defaultSource != null) {
+                        _uiState.update { it.copy(selectedSourceId = defaultSource.id) }
+                        sourceSyncManager.syncSingleSource(defaultSource)
+                    }
                 }
             }
         }
@@ -195,6 +214,55 @@ class MainViewModel @Inject constructor(
 
     fun clearUpdateMessage() {
         _uiState.update { it.copy(updateMessage = null) }
+    }
+
+    /**
+     * 搜索GitHub上的可用IPTV源
+     */
+    fun searchGithubSources() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSearchingSources = true, error = null) }
+
+            try {
+                val sources = sourceRepository.searchGithubSources()
+                _uiState.update {
+                    it.copy(
+                        isSearchingSources = false,
+                        discoveredSources = sources,
+                        updateMessage = "发现 ${sources.size} 个潜在源"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSearchingSources = false,
+                        error = "搜索失败: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 添加发现的GitHub源
+     */
+    fun addDiscoveredSource(source: com.moh.tv.data.remote.DiscoveredSource) {
+        viewModelScope.launch {
+            val success = sourceRepository.validateAndAddDiscoveredSource(source)
+            if (success) {
+                _uiState.update {
+                    it.copy(updateMessage = "已添加源: ${source.name}")
+                }
+            } else {
+                _uiState.update {
+                    it.copy(error = "源验证失败，无法添加")
+                }
+            }
+        }
+    }
+
+    fun clearDiscoveredSources() {
+        _uiState.update { it.copy(discoveredSources = emptyList()) }
     }
 
     fun clearAllChannels() {

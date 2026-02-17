@@ -84,6 +84,11 @@ fun SettingsScreen(
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     AppleTVSettingsButton(
+                                        text = "搜索GitHub源",
+                                        icon = Icons.Default.Search,
+                                        onClick = { viewModel.searchGithubSources() }
+                                    )
+                                    AppleTVSettingsButton(
                                         text = "生成配置码",
                                         icon = Icons.Default.QrCode,
                                         onClick = { showQRGeneratorDialog = true }
@@ -112,6 +117,39 @@ fun SettingsScreen(
                         onToggle = { viewModel.toggleSourceEnabled(source.id, !source.enabled) },
                         onDelete = { showDeleteConfirmDialog = source }
                     )
+                }
+
+                // 显示搜索到的GitHub源
+                if (uiState.discoveredSources.isNotEmpty()) {
+                    item {
+                        AppleTVSettingsSection(title = "发现的GitHub源") {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "找到 ${uiState.discoveredSources.size} 个潜在源",
+                                        color = AppleTVColors.TextSecondary,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    AppleTVSettingsButton(
+                                        text = "清除结果",
+                                        icon = Icons.Default.Clear,
+                                        onClick = { viewModel.clearDiscoveredSources() }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(uiState.discoveredSources, key = { it.url }) { discovered ->
+                        DiscoveredSourceItem(
+                            source = discovered,
+                            onAdd = { viewModel.addDiscoveredSource(discovered) }
+                        )
+                    }
                 }
                 
                 item {
@@ -1287,6 +1325,115 @@ fun AppleTVQRGeneratorDialog(
                             color = AppleTVColors.OnPrimary
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DiscoveredSourceItem(
+    source: com.moh.tv.data.remote.DiscoveredSource,
+    onAdd: () -> Unit
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    var isAddFocused by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.02f else 1f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "scale"
+    )
+
+    val addScale by animateFloatAsState(
+        targetValue = if (isAddFocused) 1.1f else 1f,
+        animationSpec = tween(150, easing = FastOutSlowInEasing),
+        label = "addScale"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(scale)
+            .focusable()
+            .onFocusEvent { isFocused = it.isFocused },
+        shape = AppleTVShapes.CardMedium,
+        color = AppleTVColors.Surface,
+        border = if (isFocused) {
+            androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+        } else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = source.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = AppleTVColors.TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = source.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AppleTVColors.TextTertiary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = AppleTVColors.AccentOrange,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "${source.stars} stars",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AppleTVColors.TextSecondary
+                    )
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .scale(addScale)
+                    .focusable()
+                    .onFocusEvent { isAddFocused = it.isFocused },
+                shape = RoundedCornerShape(8.dp),
+                color = AppleTVColors.Secondary,
+                border = if (isAddFocused) {
+                    androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                } else null,
+                onClick = onAdd
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = AppleTVColors.OnPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "添加",
+                        color = AppleTVColors.OnPrimary,
+                        style = MaterialTheme.typography.labelMedium
+                    )
                 }
             }
         }
