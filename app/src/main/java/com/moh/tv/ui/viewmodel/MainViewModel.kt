@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.moh.tv.data.local.entity.ChannelEntity
 import com.moh.tv.data.local.entity.SourceEntity
+import com.moh.tv.data.remote.AutoSourceDetector
 import com.moh.tv.data.remote.SourceSyncManager
 import com.moh.tv.data.remote.UpdateResult
 import com.moh.tv.data.repository.ChannelRepository
