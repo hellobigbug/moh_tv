@@ -6,6 +6,7 @@ import com.moh.tv.data.local.entity.ChannelEntity
 import com.moh.tv.data.repository.ChannelRepository
 import com.moh.tv.player.PlayerManager
 import com.moh.tv.player.PlayerState
+import com.moh.tv.player.VideoQuality
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -120,8 +121,13 @@ class PlayerViewModel @Inject constructor(
         showControlsTemporarily()
     }
 
-    fun setQuality(quality: Int) {
+    fun setQuality(quality: VideoQuality) {
         playerManager.setQuality(quality)
+        showControlsTemporarily()
+    }
+
+    fun switchToNextQuality() {
+        playerManager.switchToNextQuality()
         showControlsTemporarily()
     }
 

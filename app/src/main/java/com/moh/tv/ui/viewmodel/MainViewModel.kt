@@ -121,50 +121,41 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            channelRepository.getAllChannels().collect { channels ->
+            combine(
+                channelRepository.getAllChannels(),
+                channelRepository.getAllGroups(),
+                channelRepository.getFavoriteChannels(),
+                channelRepository.getRecentWatched(),
+                sourceRepository.getAllSources()
+            ) { channels, groups, favorites, recent, sources ->
+                val selectedGroup = _selectedGroup.value
+                val filteredChannels = filterChannels(channels, selectedGroup)
+                val shouldAutoSelect = _uiState.value.selectedSourceId == null && sources.isNotEmpty()
+                
                 _uiState.update { state ->
+                    val newSelectedId = if (state.selectedSourceId == null && sources.isNotEmpty()) {
+                        sources.firstOrNull { it.enabled }?.id
+                    } else {
+                        state.selectedSourceId
+                    }
+
                     state.copy(
                         channels = channels,
-                        filteredChannels = filterChannels(channels, state.selectedGroup),
+                        filteredChannels = filteredChannels,
+                        groups = listOf("全部") + groups,
+                        favorites = favorites,
+                        recentWatched = recent,
+                        sources = sources,
+                        selectedSourceId = newSelectedId,
                         isLoading = false
                     )
                 }
-            }
-        }
-
-        viewModelScope.launch {
-            channelRepository.getAllGroups().collect { groups ->
-                _uiState.update { it.copy(groups = listOf("全部") + groups) }
-            }
-        }
-
-        viewModelScope.launch {
-            channelRepository.getFavoriteChannels().collect { favorites ->
-                _uiState.update { it.copy(favorites = favorites) }
-            }
-        }
-
-        viewModelScope.launch {
-            channelRepository.getRecentWatched().collect { recent ->
-                _uiState.update { it.copy(recentWatched = recent) }
-            }
-        }
-
-        viewModelScope.launch {
-            sourceRepository.getAllSources().collect { sources ->
-                val currentSelectedId = _uiState.value.selectedSourceId
-                val shouldAutoSelect = currentSelectedId == null && sources.isNotEmpty()
-
-                _uiState.update { it.copy(sources = sources) }
-
+                
                 if (shouldAutoSelect) {
                     val defaultSource = sources.firstOrNull { it.enabled }
-                    if (defaultSource != null) {
-                        _uiState.update { it.copy(selectedSourceId = defaultSource.id) }
-                        sourceSyncManager.syncSingleSource(defaultSource)
-                    }
+                    defaultSource?.let { sourceSyncManager.syncSingleSource(it) }
                 }
-            }
+            }.collect()
         }
     }
 
