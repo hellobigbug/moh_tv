@@ -80,7 +80,16 @@ class MainViewModel @Inject constructor(
 
         viewModelScope.launch {
             sourceRepository.getAllSources().collect { sources ->
+                val currentSelectedId = _uiState.value.selectedSourceId
+                val shouldAutoSelect = currentSelectedId == null && sources.isNotEmpty()
+                
                 _uiState.update { it.copy(sources = sources) }
+                
+                if (shouldAutoSelect) {
+                    val defaultSource = sources.first { it.enabled }
+                    _uiState.update { it.copy(selectedSourceId = defaultSource.id) }
+                    sourceSyncManager.syncSingleSource(defaultSource)
+                }
             }
         }
     }
