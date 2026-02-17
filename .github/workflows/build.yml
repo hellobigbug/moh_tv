@@ -27,42 +27,14 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: List build outputs
+        run: ls -la app/build/outputs/apk/debug/
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: mohtv-debug.apk
+          name: mohtv-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
-
-  release:
-    name: Create Release
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Download APK
-        uses: actions/download-artifact@v4
-        with:
-          name: mohtv-debug.apk
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: mohtv-debug.apk
-          body: |
-            # MOH TV 安卓TV直播客户端
-
-            自动构建版本
-
-            ## 更新内容
-            - 自动打包构建
-
-            ## 安装说明
-            1. 下载下方APK文件
-            2. 安装到Android TV/盒子设备
-            3. 首次使用请更新直播源
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
