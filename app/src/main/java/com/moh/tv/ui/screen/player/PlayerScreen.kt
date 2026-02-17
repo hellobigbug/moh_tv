@@ -6,24 +6,45 @@ import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import com.moh.tv.player.PlayerManager
+import com.moh.tv.ui.theme.AppleTVColors
+import com.moh.tv.ui.theme.AppleTVShapes
 import com.moh.tv.ui.viewmodel.PlayerViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -38,19 +59,27 @@ fun PlayerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val activity = context as? Activity
-
+    var showControls by remember { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    
     DisposableEffect(Unit) {
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-
         onDispose {
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
-
+    
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            delay(5000)
+            showControls = false
+        }
+    }
+    
     BackHandler {
         onBack()
     }
-
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -72,7 +101,7 @@ fun PlayerScreen(
                 playerView.player = playerManager.getPlayer()
             }
         )
-
+        
         LaunchedEffect(channelId, channelUrl) {
             val channel = com.moh.tv.data.local.entity.ChannelEntity(
                 id = channelId,
@@ -82,26 +111,52 @@ fun PlayerScreen(
             )
             viewModel.playChannel(channel)
         }
-
-        if (uiState.showControls) {
-            PlayerControls(
+        
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(300)
+            ),
+            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(300)
+            )
+        ) {
+            AppleTVPlayerControls(
                 channelName = uiState.currentChannel?.name ?: channelName,
                 isPlaying = uiState.playerState.isPlaying,
                 isBuffering = uiState.playerState.isBuffering,
                 currentPosition = uiState.playerState.currentPosition,
                 duration = uiState.playerState.duration,
-                onPlayPause = { viewModel.togglePlayPause() },
-                onSeek = { viewModel.seekTo(it) },
-                onSeekForward = { viewModel.seekForward() },
-                onSeekBack = { viewModel.seekBack() },
+                onPlayPause = { 
+                    viewModel.togglePlayPause()
+                    showControls = true
+                },
+                onSeek = { 
+                    viewModel.seekTo(it)
+                    showControls = true
+                },
+                onSeekForward = { 
+                    viewModel.seekForward()
+                    showControls = true
+                },
+                onSeekBack = { 
+                    viewModel.seekBack()
+                    showControls = true
+                },
                 onBack = onBack,
-                onQualityClick = { viewModel.showQualityMenu() },
-                onVolumeClick = { }
+                onQualityClick = { 
+                    viewModel.showQualityMenu()
+                    showControls = true
+                },
+                onVolumeClick = { },
+                onShowControls = { showControls = true }
             )
         }
-
+        
         if (uiState.showQualityMenu) {
-            QualityMenuDialog(
+            AppleTVQualityMenuDialog(
                 currentQuality = uiState.playerState.currentQuality,
                 onQualitySelect = {
                     viewModel.setQuality(it)
@@ -110,19 +165,35 @@ fun PlayerScreen(
                 onDismiss = { viewModel.hideQualityMenu() }
             )
         }
-
+        
         if (uiState.showError) {
-            ErrorDialog(
+            AppleTVErrorDialog(
                 message = uiState.errorMessage ?: "播放错误",
                 onRetry = { viewModel.retry() },
                 onDismiss = { viewModel.dismissError() }
             )
         }
-
+        
+        if (uiState.playerState.isBuffering) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = AppleTVColors.Primary,
+                    strokeWidth = 4.dp,
+                    modifier = Modifier.size(64.dp)
+                )
+            }
+        }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .focusable(enabled = true)
+                .clickable { 
+                    showControls = !showControls
+                }
         ) {
             DisposableEffect(Unit) {
                 onDispose {
@@ -134,7 +205,7 @@ fun PlayerScreen(
 }
 
 @Composable
-fun PlayerControls(
+fun AppleTVPlayerControls(
     channelName: String,
     isPlaying: Boolean,
     isBuffering: Boolean,
@@ -146,32 +217,42 @@ fun PlayerControls(
     onSeekBack: () -> Unit,
     onBack: () -> Unit,
     onQualityClick: () -> Unit,
-    onVolumeClick: () -> Unit
+    onVolumeClick: () -> Unit,
+    onShowControls: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.7f),
+                        Color.Transparent,
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.8f)
+                    )
+                )
+            )
     ) {
-        TopControl(
+        AppleTVTopControl(
             channelName = channelName,
             onBack = onBack,
             onQualityClick = onQualityClick
         )
-
+        
         Spacer(modifier = Modifier.weight(1f))
-
-        CenterControls(
+        
+        AppleTVCenterControls(
             isPlaying = isPlaying,
             isBuffering = isBuffering,
             onPlayPause = onPlayPause,
             onSeekForward = onSeekForward,
             onSeekBack = onSeekBack
         )
-
+        
         Spacer(modifier = Modifier.weight(1f))
-
-        BottomControls(
+        
+        AppleTVBottomControls(
             currentPosition = currentPosition,
             duration = duration,
             onSeek = onSeek,
@@ -181,7 +262,7 @@ fun PlayerControls(
 }
 
 @Composable
-fun TopControl(
+fun AppleTVTopControl(
     channelName: String,
     onBack: () -> Unit,
     onQualityClick: () -> Unit
@@ -189,39 +270,101 @@ fun TopControl(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.7f))
-            .padding(16.dp),
+            .padding(32.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = "返回",
-                    tint = Color.White
-                )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            var isBackFocused by remember { mutableStateOf(false) }
+            
+            val backScale by animateFloatAsState(
+                targetValue = if (isBackFocused) 1.1f else 1f,
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "backScale"
+            )
+            
+            Surface(
+                modifier = Modifier
+                    .scale(backScale)
+                    .size(48.dp)
+                    .focusable()
+                    .onFocusEvent { isBackFocused = it.isFocused },
+                shape = CircleShape,
+                color = AppleTVColors.Surface.copy(alpha = 0.8f),
+                border = if (isBackFocused) {
+                    androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                } else null,
+                onClick = onBack
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "返回",
+                        tint = AppleTVColors.TextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            
             Text(
                 text = channelName,
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = AppleTVColors.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
-
-        IconButton(onClick = onQualityClick) {
-            Icon(
-                Icons.Default.Settings,
-                contentDescription = "清晰度",
-                tint = Color.White
-            )
+        
+        var isQualityFocused by remember { mutableStateOf(false) }
+        
+        val qualityScale by animateFloatAsState(
+            targetValue = if (isQualityFocused) 1.1f else 1f,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "qualityScale"
+        )
+        
+        Surface(
+            modifier = Modifier
+                .scale(qualityScale)
+                .focusable()
+                .onFocusEvent { isQualityFocused = it.isFocused },
+            shape = RoundedCornerShape(12.dp),
+            color = AppleTVColors.Surface.copy(alpha = 0.8f),
+            border = if (isQualityFocused) {
+                androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+            } else null,
+            onClick = onQualityClick
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "画质",
+                    tint = AppleTVColors.TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "画质",
+                    color = AppleTVColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
     }
 }
 
 @Composable
-fun CenterControls(
+fun AppleTVCenterControls(
     isPlaying: Boolean,
     isBuffering: Boolean,
     onPlayPause: () -> Unit,
@@ -233,58 +376,122 @@ fun CenterControls(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(
-            onClick = onSeekBack,
-            modifier = Modifier.size(64.dp)
+        var isBackFocused by remember { mutableStateOf(false) }
+        var isPlayFocused by remember { mutableStateOf(false) }
+        var isForwardFocused by remember { mutableStateOf(false) }
+        
+        val backScale by animateFloatAsState(
+            targetValue = if (isBackFocused) 1.15f else 1f,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "backScale"
+        )
+        
+        val playScale by animateFloatAsState(
+            targetValue = if (isPlayFocused) 1.15f else 1f,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "playScale"
+        )
+        
+        val forwardScale by animateFloatAsState(
+            targetValue = if (isForwardFocused) 1.15f else 1f,
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "forwardScale"
+        )
+        
+        Surface(
+            modifier = Modifier
+                .scale(backScale)
+                .size(64.dp)
+                .focusable()
+                .onFocusEvent { isBackFocused = it.isFocused },
+            shape = CircleShape,
+            color = AppleTVColors.Surface.copy(alpha = 0.8f),
+            border = if (isBackFocused) {
+                androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+            } else null,
+            onClick = onSeekBack
         ) {
-            Icon(
-                Icons.Default.Replay10,
-                contentDescription = "后退10秒",
-                tint = Color.White,
-                modifier = Modifier.size(48.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(32.dp))
-
-        if (isBuffering) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(64.dp),
-                color = Color.White,
-                strokeWidth = 4.dp
-            )
-        } else {
-            IconButton(
-                onClick = onPlayPause,
-                modifier = Modifier.size(64.dp)
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "暂停" else "播放",
-                    tint = Color.White,
-                    modifier = Modifier.size(64.dp)
+                    Icons.Default.Replay10,
+                    contentDescription = "后退10秒",
+                    tint = AppleTVColors.TextPrimary,
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
-
-        Spacer(modifier = Modifier.width(32.dp))
-
-        IconButton(
-            onClick = onSeekForward,
-            modifier = Modifier.size(64.dp)
+        
+        Spacer(modifier = Modifier.width(48.dp))
+        
+        Surface(
+            modifier = Modifier
+                .scale(playScale)
+                .size(88.dp)
+                .focusable()
+                .onFocusEvent { isPlayFocused = it.isFocused },
+            shape = CircleShape,
+            color = AppleTVColors.Primary,
+            border = if (isPlayFocused) {
+                androidx.compose.foundation.BorderStroke(3.dp, AppleTVColors.FocusBorder)
+            } else null,
+            onClick = onPlayPause
         ) {
-            Icon(
-                Icons.Default.Forward10,
-                contentDescription = "前进10秒",
-                tint = Color.White,
-                modifier = Modifier.size(48.dp)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isBuffering) {
+                    CircularProgressIndicator(
+                        color = AppleTVColors.OnPrimary,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(40.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "暂停" else "播放",
+                        tint = AppleTVColors.OnPrimary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(48.dp))
+        
+        Surface(
+            modifier = Modifier
+                .scale(forwardScale)
+                .size(64.dp)
+                .focusable()
+                .onFocusEvent { isForwardFocused = it.isFocused },
+            shape = CircleShape,
+            color = AppleTVColors.Surface.copy(alpha = 0.8f),
+            border = if (isForwardFocused) {
+                androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+            } else null,
+            onClick = onSeekForward
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Forward10,
+                    contentDescription = "前进10秒",
+                    tint = AppleTVColors.TextPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-fun BottomControls(
+fun AppleTVBottomControls(
     currentPosition: Long,
     duration: Long,
     onSeek: (Long) -> Unit,
@@ -293,106 +500,252 @@ fun BottomControls(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.7f))
-            .padding(16.dp)
+            .padding(horizontal = 48.dp, vertical = 32.dp)
     ) {
-        Slider(
-            value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-            onValueChange = { onSeek((it * duration).toLong()) },
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-            )
-        )
-
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = formatTime(currentPosition),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
+                color = AppleTVColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium
             )
+            
+            var isSliderFocused by remember { mutableStateOf(false)
+            }
+            
+            val sliderScale by animateFloatAsState(
+                targetValue = if (isSliderFocused) 1.02f else 1f,
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "sliderScale"
+            )
+            
+            Slider(
+                value = currentPosition.toFloat(),
+                onValueChange = { onSeek(it.toLong()) },
+                valueRange = 0f..(if (duration > 0) duration.toFloat() else 1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .scale(sliderScale)
+                    .focusable()
+                    .onFocusEvent { isSliderFocused = it.isFocused },
+                colors = SliderDefaults.colors(
+                    thumbColor = AppleTVColors.Primary,
+                    activeTrackColor = AppleTVColors.Primary,
+                    inactiveTrackColor = AppleTVColors.SurfaceVariant
+                )
+            )
+            
             Text(
                 text = formatTime(duration),
-                color = Color.White,
-                style = MaterialTheme.typography.bodySmall
+                color = AppleTVColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
 }
 
 @Composable
-fun QualityMenuDialog(
-    currentQuality: Int,
-    onQualitySelect: (Int) -> Unit,
+fun AppleTVQualityMenuDialog(
+    currentQuality: String?,
+    onQualitySelect: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val qualities = listOf(-1 to "自动", 1280 to "1080P", 720 to "720P", 480 to "480P", 360 to "360P")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("选择清晰度") },
-        text = {
-            Column {
-                qualities.forEach { (quality, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = quality == currentQuality,
-                            onClick = { onQualitySelect(quality) }
+    val qualities = listOf("自动", "高清 1080p", "高清 720p", "标清 480p", "流畅 360p")
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(400.dp)
+                .wrapContentHeight(),
+            shape = AppleTVShapes.CardLarge,
+            color = AppleTVColors.Surface,
+            tonalElevation = 24.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    text = "选择画质",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppleTVColors.TextPrimary
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(qualities) { quality ->
+                        var isFocused by remember { mutableStateOf(false) }
+                        
+                        val bgColor by animateColorAsState(
+                            targetValue = when {
+                                quality == currentQuality -> AppleTVColors.Primary.copy(alpha = 0.2f)
+                                isFocused -> AppleTVColors.SurfaceElevated
+                                else -> AppleTVColors.SurfaceVariant
+                            },
+                            animationSpec = tween(150, easing = FastOutSlowInEasing),
+                            label = "bgColor"
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(label)
+                        
+                        val scale by animateFloatAsState(
+                            targetValue = if (isFocused) 1.02f else 1f,
+                            animationSpec = tween(150, easing = FastOutSlowInEasing),
+                            label = "scale"
+                        )
+                        
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .scale(scale)
+                                .focusable()
+                                .onFocusEvent { isFocused = it.isFocused },
+                            shape = RoundedCornerShape(12.dp),
+                            color = bgColor,
+                            border = if (isFocused) {
+                                androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                            } else null,
+                            onClick = { onQualitySelect(quality) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = quality,
+                                    color = if (quality == currentQuality) AppleTVColors.Primary else AppleTVColors.TextPrimary,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (quality == currentQuality) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = AppleTVColors.Primary
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
-            }
         }
-    )
+    }
 }
 
 @Composable
-fun ErrorDialog(
+fun AppleTVErrorDialog(
     message: String,
     onRetry: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("播放错误") },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onRetry) {
-                Text("重试")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.width(500.dp),
+            shape = AppleTVShapes.CardLarge,
+            color = AppleTVColors.Surface
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Default.ErrorOutline,
+                    contentDescription = null,
+                    tint = AppleTVColors.Error,
+                    modifier = Modifier.size(64.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "播放错误",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = AppleTVColors.TextPrimary
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AppleTVColors.TextSecondary
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    var isRetryFocused by remember { mutableStateOf(false) }
+                    var isDismissFocused by remember { mutableStateOf(false) }
+                    
+                    Surface(
+                        modifier = Modifier
+                            .focusable()
+                            .onFocusEvent { isRetryFocused = it.isFocused },
+                        shape = RoundedCornerShape(12.dp),
+                        color = AppleTVColors.SurfaceVariant,
+                        border = if (isRetryFocused) {
+                            androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                        } else null,
+                        onClick = onDismiss
+                    ) {
+                        Text(
+                            text = "关闭",
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
+                            color = AppleTVColors.TextPrimary
+                        )
+                    }
+                    
+                    Surface(
+                        modifier = Modifier
+                            .focusable()
+                            .onFocusEvent { isDismissFocused = it.isFocused },
+                        shape = RoundedCornerShape(12.dp),
+                        color = AppleTVColors.Primary,
+                        border = if (isDismissFocused) {
+                            androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                        } else null,
+                        onClick = onRetry
+                    ) {
+                        Text(
+                            text = "重试",
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 14.dp),
+                            color = AppleTVColors.OnPrimary
+                        )
+                    }
+                }
             }
         }
-    )
+    }
 }
 
-private fun formatTime(ms: Long): String {
-    if (ms <= 0) return "00:00"
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
+private fun formatTime(millis: Long): String {
+    if (millis < 0) return "00:00"
+    val seconds = (millis / 1000) % 60
+    val minutes = (millis / (1000 * 60)) % 60
+    val hours = millis / (1000 * 60 * 60)
     return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
+        String.format("%02d:%02d:%02d", hours, minutes, seconds)
     } else {
         String.format("%02d:%02d", minutes, seconds)
     }

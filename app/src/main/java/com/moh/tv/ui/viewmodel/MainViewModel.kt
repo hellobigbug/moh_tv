@@ -186,4 +186,13 @@ class MainViewModel @Inject constructor(
     fun clearUpdateMessage() {
         _uiState.update { it.copy(updateMessage = null) }
     }
+
+    fun clearAllChannels() {
+        viewModelScope.launch {
+            channelRepository.deleteAllChannels()
+            _uiState.update { 
+                it.copy(updateMessage = "已清除所有频道数据") 
+            }
+        }
+    }
 }
