@@ -175,6 +175,7 @@ fun SettingsSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SourceItem(
     source: SourceEntity,
