@@ -47,6 +47,7 @@ fun SettingsScreen(
     var showAddSourceDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf<SourceEntity?>(null) }
     var showQRScannerDialog by remember { mutableStateOf(false) }
+    var showQRGeneratorDialog by remember { mutableStateOf(false) }
     
     Box(
         modifier = Modifier
@@ -83,6 +84,11 @@ fun SettingsScreen(
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     AppleTVSettingsButton(
+                                        text = "生成配置码",
+                                        icon = Icons.Default.QrCode,
+                                        onClick = { showQRGeneratorDialog = true }
+                                    )
+                                    AppleTVSettingsButton(
                                         text = "扫码添加",
                                         icon = Icons.Default.QrCodeScanner,
                                         onClick = { showQRScannerDialog = true }
@@ -101,6 +107,8 @@ fun SettingsScreen(
                 items(uiState.sources, key = { it.id }) { source ->
                     AppleTVSourceItem(
                         source = source,
+                        isSelected = uiState.selectedSourceId == source.id,
+                        onSelect = { viewModel.selectSource(source.id) },
                         onToggle = { viewModel.toggleSourceEnabled(source.id, !source.enabled) },
                         onDelete = { showDeleteConfirmDialog = source }
                     )
@@ -201,6 +209,13 @@ fun SettingsScreen(
                 viewModel.addSource("扫码添加", url)
                 showQRScannerDialog = false
             }
+        )
+    }
+    
+    if (showQRGeneratorDialog) {
+        AppleTVQRGeneratorDialog(
+            sources = uiState.sources,
+            onDismiss = { showQRGeneratorDialog = false }
         )
     }
     
@@ -350,21 +365,41 @@ fun AppleTVSettingsButton(
 @Composable
 fun AppleTVSourceItem(
     source: SourceEntity,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
+        targetValue = when {
+            isFocused -> 1.03f
+            isSelected -> 1.01f
+            else -> 1f
+        },
         animationSpec = tween(200, easing = FastOutSlowInEasing),
         label = "scale"
     )
     
     val bgColor by animateColorAsState(
-        targetValue = if (isFocused) AppleTVColors.SurfaceElevated else AppleTVColors.Surface,
+        targetValue = when {
+            isSelected -> AppleTVColors.SelectedBackground
+            isFocused -> AppleTVColors.SurfaceElevated
+            else -> AppleTVColors.Surface
+        },
         animationSpec = tween(200, easing = FastOutSlowInEasing),
         label = "bgColor"
+    )
+    
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> AppleTVColors.SelectedBorder
+            isFocused -> AppleTVColors.FocusBorder
+            else -> Color.Transparent
+        },
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "borderColor"
     )
     
     Surface(
@@ -375,9 +410,11 @@ fun AppleTVSourceItem(
             .onFocusEvent { isFocused = it.isFocused },
         shape = AppleTVShapes.CardMedium,
         color = bgColor,
-        border = if (isFocused) {
-            androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
-        } else null
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isSelected || isFocused) 3.dp else 0.dp,
+            color = borderColor
+        ),
+        onClick = onSelect
     ) {
         Row(
             modifier = Modifier
@@ -386,22 +423,64 @@ fun AppleTVSourceItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = source.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = AppleTVColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = source.url,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AppleTVColors.TextTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(AppleTVColors.Primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = AppleTVColors.OnPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = source.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isSelected) AppleTVColors.Primary else AppleTVColors.TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                        if (isSelected) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = AppleTVColors.Primary.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "当前",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    color = AppleTVColors.Primary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = source.url,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AppleTVColors.TextTertiary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1023,6 +1102,189 @@ fun AppleTVConfirmDialog(
                             text = confirmText,
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                             color = AppleTVColors.OnError
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppleTVQRGeneratorDialog(
+    sources: List<SourceEntity>,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    val configJson = remember(sources) {
+        buildString {
+            append("{\"sources\":[")
+            sources.forEachIndexed { index, source ->
+                if (index > 0) append(",")
+                append("{\"name\":\"${source.name}\",\"url\":\"${source.url}\",\"enabled\":${source.enabled}}")
+            }
+            append("]}")
+        }
+    }
+    
+    var isCloseFocused by remember { mutableStateOf(false) }
+    
+    val closeScale by animateFloatAsState(
+        targetValue = if (isCloseFocused) 1.1f else 1f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "closeScale"
+    )
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .width(600.dp)
+                .wrapContentHeight(),
+            shape = AppleTVShapes.CardLarge,
+            color = AppleTVColors.Surface
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "配置二维码",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AppleTVColors.TextPrimary
+                    )
+                    
+                    Surface(
+                        modifier = Modifier
+                            .scale(closeScale)
+                            .size(40.dp)
+                            .focusable()
+                            .onFocusEvent { isCloseFocused = it.isFocused },
+                        shape = CircleShape,
+                        color = AppleTVColors.SurfaceVariant,
+                        border = if (isCloseFocused) {
+                            androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                        } else null,
+                        onClick = onDismiss
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "关闭",
+                                tint = AppleTVColors.TextPrimary
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text(
+                    text = "使用其他设备扫描此二维码可导入当前配置",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppleTVColors.TextSecondary
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .size(280.dp)
+                        .background(Color.White, RoundedCornerShape(16.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "二维码生成区域\n(需集成QR库)",
+                        color = Color.Black,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.wrapContentSize()
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = AppleTVColors.SurfaceVariant
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "配置信息:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = AppleTVColors.TextTertiary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "共 ${sources.size} 个直播源",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppleTVColors.TextPrimary
+                        )
+                        Text(
+                            text = "已启用: ${sources.count { it.enabled }} 个",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AppleTVColors.TextSecondary
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                var isCopyFocused by remember { mutableStateOf(false) }
+                
+                val copyScale by animateFloatAsState(
+                    targetValue = if (isCopyFocused) 1.05f else 1f,
+                    animationSpec = tween(200, easing = FastOutSlowInEasing),
+                    label = "copyScale"
+                )
+                
+                Surface(
+                    modifier = Modifier
+                        .scale(copyScale)
+                        .focusable()
+                        .onFocusEvent { isCopyFocused = it.isFocused },
+                    shape = RoundedCornerShape(12.dp),
+                    color = AppleTVColors.Primary,
+                    border = if (isCopyFocused) {
+                        androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
+                    } else null,
+                    onClick = {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("MOH TV Config", configJson)
+                        clipboard.setPrimaryClip(clip)
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = null,
+                            tint = AppleTVColors.OnPrimary
+                        )
+                        Text(
+                            text = "复制配置到剪贴板",
+                            color = AppleTVColors.OnPrimary
                         )
                     }
                 }

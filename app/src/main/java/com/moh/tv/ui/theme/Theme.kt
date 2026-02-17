@@ -51,6 +51,12 @@ object AppleTVColors {
     
     val FocusGlow = Color(0xFFFFFFFF)
     val FocusBorder = Color(0xFFFFFFFF)
+    
+    val SelectedBackground = Color(0xFF2997FF).copy(alpha = 0.15f)
+    val SelectedBorder = Color(0xFF2997FF)
+    val SelectedGlow = Color(0xFF2997FF).copy(alpha = 0.3f)
+    
+    val HoverBackground = Color(0xFF3A3A3C)
 }
 
 object AppleTVShapes {

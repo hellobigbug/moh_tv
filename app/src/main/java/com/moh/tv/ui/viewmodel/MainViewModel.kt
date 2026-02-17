@@ -21,6 +21,7 @@ data class MainUiState(
     val favorites: List<ChannelEntity> = emptyList(),
     val recentWatched: List<ChannelEntity> = emptyList(),
     val sources: List<SourceEntity> = emptyList(),
+    val selectedSourceId: Long? = null,
     val isLoading: Boolean = false,
     val isUpdating: Boolean = false,
     val error: String? = null,
@@ -192,6 +193,26 @@ class MainViewModel @Inject constructor(
             channelRepository.deleteAllChannels()
             _uiState.update { 
                 it.copy(updateMessage = "已清除所有频道数据") 
+            }
+        }
+    }
+
+    fun selectSource(sourceId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(selectedSourceId = sourceId) }
+            val source = sourceRepository.getSourceById(sourceId)
+            if (source != null && source.enabled) {
+                sourceSyncManager.syncSingleSource(source)
+            }
+        }
+    }
+
+    fun autoSelectDefaultSource() {
+        viewModelScope.launch {
+            val sources = sourceRepository.getEnabledSources().first()
+            if (sources.isNotEmpty() && _uiState.value.selectedSourceId == null) {
+                val defaultSource = sources.first()
+                _uiState.update { it.copy(selectedSourceId = defaultSource.id) }
             }
         }
     }
