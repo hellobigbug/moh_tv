@@ -1563,7 +1563,7 @@ fun SourceTestResultItem(
 
                 // 质量评分条
                 LinearProgressIndicator(
-                    progress = { (result.score / 100).toFloat() },
+                    progress = (result.score / 100).toFloat(),
                     modifier = Modifier
                         .fillMaxWidth(0.6f)
                         .height(4.dp)
