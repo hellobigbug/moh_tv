@@ -549,11 +549,17 @@ fun AppleTVBottomControls(
 
 @Composable
 fun AppleTVQualityMenuDialog(
-    currentQuality: String?,
-    onQualitySelect: (String) -> Unit,
+    currentQuality: Int,
+    onQualitySelect: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val qualities = listOf("自动", "高清 1080p", "高清 720p", "标清 480p", "流畅 360p")
+    val qualities = listOf(
+        -1 to "自动",
+        1080 to "高清 1080p",
+        720 to "高清 720p",
+        480 to "标清 480p",
+        360 to "流畅 360p"
+    )
     
     Box(
         modifier = Modifier
@@ -585,12 +591,12 @@ fun AppleTVQualityMenuDialog(
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(qualities) { quality ->
+                    items(qualities) { (qualityValue, qualityName) ->
                         var isFocused by remember { mutableStateOf(false) }
                         
                         val bgColor by animateColorAsState(
                             targetValue = when {
-                                quality == currentQuality -> AppleTVColors.Primary.copy(alpha = 0.2f)
+                                qualityValue == currentQuality -> AppleTVColors.Primary.copy(alpha = 0.2f)
                                 isFocused -> AppleTVColors.SurfaceElevated
                                 else -> AppleTVColors.SurfaceVariant
                             },
@@ -615,7 +621,7 @@ fun AppleTVQualityMenuDialog(
                             border = if (isFocused) {
                                 androidx.compose.foundation.BorderStroke(2.dp, AppleTVColors.FocusBorder)
                             } else null,
-                            onClick = { onQualitySelect(quality) }
+                            onClick = { onQualitySelect(qualityValue) }
                         ) {
                             Row(
                                 modifier = Modifier
@@ -625,11 +631,11 @@ fun AppleTVQualityMenuDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = quality,
-                                    color = if (quality == currentQuality) AppleTVColors.Primary else AppleTVColors.TextPrimary,
+                                    text = qualityName,
+                                    color = if (qualityValue == currentQuality) AppleTVColors.Primary else AppleTVColors.TextPrimary,
                                     style = MaterialTheme.typography.bodyLarge
                                 )
-                                if (quality == currentQuality) {
+                                if (qualityValue == currentQuality) {
                                     Icon(
                                         Icons.Default.Check,
                                         contentDescription = null,

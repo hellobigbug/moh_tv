@@ -2,6 +2,7 @@ package com.moh.tv.ui.screen.main
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
@@ -38,6 +39,7 @@ import com.moh.tv.data.local.entity.ChannelEntity
 import com.moh.tv.ui.components.*
 import com.moh.tv.ui.theme.AppleTVColors
 import com.moh.tv.ui.theme.AppleTVShapes
+import com.moh.tv.ui.viewmodel.MainUiState
 import com.moh.tv.ui.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 
@@ -207,6 +209,7 @@ fun AppleTVTopBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppleTVTabBar(
     tabs: List<TabItem>,
@@ -553,6 +556,7 @@ fun ChannelGrid(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppleTVChannelCard(
     channel: ChannelEntity,
