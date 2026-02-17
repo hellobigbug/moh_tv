@@ -1,8 +1,10 @@
-name: Build Android APK
+name: Build and Release Android APK
 
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -27,15 +29,111 @@ jobs:
         with:
           gradle-version: '8.2'
 
-      - name: Build with Gradle
-        run: gradle assembleDebug --stacktrace
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: List build outputs
-        run: ls -la app/build/outputs/apk/debug/ || echo "Directory not found"
+        run: |
+          echo "=== Debug APK ==="
+          ls -la app/build/outputs/apk/debug/ || echo "Debug directory not found"
+          echo "=== Release APK ==="
+          ls -la app/build/outputs/apk/release/ || echo "Release directory not found"
 
-      - name: Upload APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: mohtv-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohtv-release
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: mohtv-debug
+          path: ./artifacts/debug
+
+      - name: Download Release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: mohtv-release
+          path: ./artifacts/release
+
+      - name: Rename APKs
+        run: |
+          mkdir -p ./release
+          cp ./artifacts/debug/app-debug.apk ./release/MOH_TV_${{ github.ref_name }}_debug.apk
+          cp ./artifacts/release/app-release-unsigned.apk ./release/MOH_TV_${{ github.ref_name }}_release.apk
+          ls -la ./release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./release/MOH_TV_${{ github.ref_name }}_debug.apk
+            ./release/MOH_TV_${{ github.ref_name }}_release.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## MOH TV ${{ github.ref_name }}
+
+            ### 功能特点
+            - 📺 开箱即用，自动检测最佳直播源
+            - 🔍 支持GitHub源自动搜寻
+            - 📱 专为Android TV优化
+            - 🎮 遥控器友好操作
+            - ⚡ 源质量检测和评分
+
+            ### 安装说明
+            1. 下载 `MOH_TV_${{ github.ref_name }}_debug.apk`（调试版）或 `MOH_TV_${{ github.ref_name }}_release.apk`（发布版）
+            2. 将APK安装到Android TV设备
+            3. 打开应用即可自动加载频道
+
+            ### 文件说明
+            - `debug` 版本：包含调试信息，适合测试
+            - `release` 版本：优化版本，适合日常使用
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Notify Build Status
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Build Success Notification
+        if: needs.build.result == 'success'
+        run: |
+          echo "✅ Build completed successfully!"
+          echo "📦 Artifacts uploaded"
+
+      - name: Build Failure Notification
+        if: needs.build.result == 'failure'
+        run: |
+          echo "❌ Build failed!"
+          exit 1
