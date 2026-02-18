@@ -102,11 +102,18 @@ class SourceSyncManager @Inject constructor(
         try {
             val channels = iptvParser.parseM3U(source.url)
 
+            if (channels.isEmpty()) {
+                return@withContext UpdateResult(
+                    success = false,
+                    message = "未能解析到任何频道，请检查源地址是否正确"
+                )
+            }
+
             val entities = channels.map { channel ->
                 ChannelEntity(
                     name = channel.name,
                     url = channel.url,
-                    group = channel.group,
+                    group = channel.group.ifEmpty { "未分类" },
                     logo = channel.logo,
                     epgUrl = channel.epgUrl,
                     quality = channel.quality,
@@ -114,19 +121,23 @@ class SourceSyncManager @Inject constructor(
                 )
             }
 
-            // 保存频道到数据库
             channelRepository.deleteAllChannels()
             channelRepository.saveChannels(entities)
             sourceRepository.updateLastUpdate(source.id)
 
+            val groups = entities.map { it.group }.distinct().size
+            
             UpdateResult(
                 updated = entities.size,
                 success = true,
-                message = "成功更新 ${entities.size} 个频道"
+                message = "成功更新 ${entities.size} 个频道，${groups} 个分类"
             )
         } catch (e: Exception) {
             e.printStackTrace()
-            UpdateResult(success = false, message = e.message ?: "更新失败")
+            UpdateResult(
+                success = false,
+                message = "同步失败: ${e.message ?: "网络错误"}"
+            )
         }
     }
 

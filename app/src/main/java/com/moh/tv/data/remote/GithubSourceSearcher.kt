@@ -22,14 +22,20 @@ class GithubSourceSearcher @Inject constructor() {
     // 预定义的可靠GitHub IPTV源列表
     private val knownReliableSources = listOf(
         SourceEntity(
-            name = "FanMingMing Live",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/fanmingming/live/main/tv/m3u/ipv6.m3u",
+            name = "IPTV-org 中国",
+            url = "https://iptv-org.github.io/iptv/countries/cn.m3u",
             enabled = true,
             autoUpdate = true
         ),
         SourceEntity(
-            name = "IPTV-org 中国",
-            url = "https://iptv-org.github.io/iptv/countries/cn.m3u",
+            name = "FanMingMing Live",
+            url = "https://raw.githubusercontent.com/fanmingming/live/main/tv/m3u/ipv6.m3u",
+            enabled = true,
+            autoUpdate = true
+        ),
+        SourceEntity(
+            name = "YanG-1989 聚合",
+            url = "https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
             enabled = true,
             autoUpdate = true
         ),
@@ -40,14 +46,32 @@ class GithubSourceSearcher @Inject constructor() {
             autoUpdate = true
         ),
         SourceEntity(
-            name = "Free-TV 全球",
-            url = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u",
+            name = "IPTV-org 香港",
+            url = "https://iptv-org.github.io/iptv/countries/hk.m3u",
             enabled = false,
             autoUpdate = true
         ),
         SourceEntity(
-            name = "YanG-1989 聚合",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
+            name = "IPTV-org 台湾",
+            url = "https://iptv-org.github.io/iptv/countries/tw.m3u",
+            enabled = false,
+            autoUpdate = true
+        ),
+        SourceEntity(
+            name = "IPTV-org 日本",
+            url = "https://iptv-org.github.io/iptv/countries/jp.m3u",
+            enabled = false,
+            autoUpdate = true
+        ),
+        SourceEntity(
+            name = "IPTV-org 韩国",
+            url = "https://iptv-org.github.io/iptv/countries/kr.m3u",
+            enabled = false,
+            autoUpdate = true
+        ),
+        SourceEntity(
+            name = "IPTV-org 美国",
+            url = "https://iptv-org.github.io/iptv/countries/us.m3u",
             enabled = false,
             autoUpdate = true
         ),
@@ -59,25 +83,7 @@ class GithubSourceSearcher @Inject constructor() {
         ),
         SourceEntity(
             name = "GuoXiaoBin 直播",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/guoxiaobin2020/live/main/ipv6.m3u",
-            enabled = false,
-            autoUpdate = true
-        ),
-        SourceEntity(
-            name = "MyIPTV",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/SP-Spacer/myiptv/main/myiptv.m3u",
-            enabled = false,
-            autoUpdate = true
-        ),
-        SourceEntity(
-            name = "qwerttvv 北京联通",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/qwerttvv/Beijing-IPTV/master/IPTV-Unicom.m3u",
-            enabled = false,
-            autoUpdate = true
-        ),
-        SourceEntity(
-            name = "qwerttvv 北京移动",
-            url = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/qwerttvv/Beijing-IPTV/master/IPTV-Mobile.m3u",
+            url = "https://raw.githubusercontent.com/guoxiaobin2020/live/main/ipv6.m3u",
             enabled = false,
             autoUpdate = true
         )
@@ -164,18 +170,18 @@ class GithubSourceSearcher @Inject constructor() {
 
     private fun generatePossibleUrls(repoFullName: String): List<String> {
         val baseUrl = "https://raw.githubusercontent.com/$repoFullName"
-        val mirrorUrl = "https://mirror.ghproxy.com/https://raw.githubusercontent.com/$repoFullName"
 
         return listOf(
-            "$mirrorUrl/main/tv.m3u",
-            "$mirrorUrl/main/playlist.m3u",
-            "$mirrorUrl/main/index.m3u",
-            "$mirrorUrl/master/tv.m3u",
-            "$mirrorUrl/master/playlist.m3u",
-            "$mirrorUrl/master/index.m3u",
             "$baseUrl/main/tv.m3u",
             "$baseUrl/main/playlist.m3u",
-            "$baseUrl/master/tv.m3u"
+            "$baseUrl/main/index.m3u",
+            "$baseUrl/main/live.m3u",
+            "$baseUrl/main/channels.m3u",
+            "$baseUrl/master/tv.m3u",
+            "$baseUrl/master/playlist.m3u",
+            "$baseUrl/master/index.m3u",
+            "$baseUrl/master/live.m3u",
+            "$baseUrl/master/channels.m3u"
         )
     }
 

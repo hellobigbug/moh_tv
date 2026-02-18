@@ -1,5 +1,6 @@
 package com.moh.tv.data.remote
 
+import android.util.Log
 import com.moh.tv.data.model.Channel
 import com.moh.tv.data.model.ChannelGroup
 import okhttp3.OkHttpClient
@@ -13,6 +14,10 @@ import javax.inject.Singleton
 @Singleton
 class IptvParser @Inject constructor() {
 
+    companion object {
+        private const val TAG = "IptvParser"
+    }
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -21,27 +26,39 @@ class IptvParser @Inject constructor() {
 
     suspend fun parseM3U(url: String): List<Channel> {
         return try {
+            Log.d(TAG, "开始解析: $url")
+            
             val request = Request.Builder()
                 .url(url)
                 .header("User-Agent", "MOHTV/1.0")
+                .header("Accept", "*/*")
                 .build()
 
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
+                Log.e(TAG, "请求失败: ${response.code} ${response.message}")
                 return emptyList()
             }
 
-            val body = response.body?.string() ?: return emptyList()
+            val body = response.body?.string()
+            if (body.isNullOrEmpty()) {
+                Log.e(TAG, "响应体为空")
+                return emptyList()
+            }
 
-            // 根据内容类型或URL后缀判断格式
-            when {
+            Log.d(TAG, "响应大小: ${body.length} 字符")
+
+            val channels = when {
                 url.endsWith(".txt", ignoreCase = true) -> parseTxtContent(body)
                 body.trimStart().startsWith("#EXTM3U", ignoreCase = true) -> parseM3UContent(body)
                 body.contains("#EXTINF:") -> parseM3UContent(body)
-                else -> parseTxtContent(body) // 默认尝试txt格式
+                else -> parseTxtContent(body)
             }
+
+            Log.d(TAG, "解析完成，共 ${channels.size} 个频道")
+            channels
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "解析异常: ${e.message}", e)
             emptyList()
         }
     }

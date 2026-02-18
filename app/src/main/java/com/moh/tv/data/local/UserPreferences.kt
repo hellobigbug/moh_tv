@@ -35,6 +35,15 @@ class UserPreferences @Inject constructor(
         val UPDATE_INTERVAL_HOURS = intPreferencesKey("update_interval_hours")
         val HARDWARE_ACCELERATION = booleanPreferencesKey("hardware_acceleration")
         val BUFFER_SIZE = intPreferencesKey("buffer_size_mb")
+        val SHOW_CURRENT_PROGRAM = booleanPreferencesKey("show_current_program")
+        val AUTO_HIDE_CONTROLS = booleanPreferencesKey("auto_hide_controls")
+        val CONTROLS_TIMEOUT_SECONDS = intPreferencesKey("controls_timeout_seconds")
+        val ENABLE_CHANNEL_NUMBER_SHORTCUT = booleanPreferencesKey("enable_channel_number_shortcut")
+        val ENABLE_SWIPE_TO_CHANGE_CHANNEL = booleanPreferencesKey("enable_swipe_to_change_channel")
+        val SHOW_WATCH_HISTORY = booleanPreferencesKey("show_watch_history")
+        val MAX_HISTORY_ITEMS = intPreferencesKey("max_history_items")
+        val ENABLE_SMART_RECOMMEND = booleanPreferencesKey("enable_smart_recommend")
+        val LAST_PLAYBACK_POSITION = longPreferencesKey("last_playback_position")
     }
 
     // 默认设置

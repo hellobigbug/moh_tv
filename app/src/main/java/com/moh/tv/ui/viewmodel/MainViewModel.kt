@@ -57,30 +57,56 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val sources = sourceRepository.getAllSources().first()
             if (sources.isEmpty()) {
-                _uiState.update { it.copy(isDetectingSources = true, updateMessage = "正在检测最佳直播源...") }
+                _uiState.update { it.copy(isDetectingSources = true, updateMessage = "正在初始化直播源...") }
 
-                // 添加默认源
                 sourceRepository.addDefaultSources()
 
-                // 获取所有默认源并检测最佳源
                 val allSources = sourceRepository.getAllSources().first()
+                
+                if (allSources.isEmpty()) {
+                    _uiState.update {
+                        it.copy(
+                            isDetectingSources = false,
+                            error = "无法添加默认直播源，请检查网络连接"
+                        )
+                    }
+                    return@launch
+                }
+
+                _uiState.update { it.copy(updateMessage = "正在检测源质量...") }
+                
                 val testResults = autoSourceDetector.detectBestSources(allSources)
 
                 _uiState.update {
                     it.copy(
                         isDetectingSources = false,
                         sourceTestResults = testResults,
-                        updateMessage = "检测到 ${testResults.size} 个可用源"
+                        updateMessage = if (testResults.isNotEmpty()) "检测到 ${testResults.size} 个可用源" else "未检测到可用源，请手动添加"
                     )
                 }
 
-                // 自动选择最佳源并同步
                 val bestSource = testResults.firstOrNull()?.source
                     ?: allSources.firstOrNull { it.enabled }
 
                 bestSource?.let { source ->
-                    _uiState.update { it.copy(selectedSourceId = source.id) }
-                    sourceSyncManager.syncSingleSource(source)
+                    _uiState.update { 
+                        it.copy(
+                            selectedSourceId = source.id,
+                            updateMessage = "正在同步频道: ${source.name}"
+                        ) 
+                    }
+                    
+                    val result = sourceSyncManager.syncSingleSource(source)
+                    
+                    _uiState.update {
+                        it.copy(
+                            updateMessage = if (result.success) {
+                                "同步成功，共 ${result.updated} 个频道"
+                            } else {
+                                "同步失败: ${result.message}"
+                            }
+                        )
+                    }
                 }
             }
         }

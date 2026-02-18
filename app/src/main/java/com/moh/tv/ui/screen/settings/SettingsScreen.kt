@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compos ? >&~e.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -223,16 +223,28 @@ fun SettingsScreen(
                                 onAdd = { viewModel.addSource("IPTV-org 中国", it) }
                             )
                             BuiltInSourceItem(
+                                name = "FanMingMing 直播",
+                                description = "国内直播源集合 - IPv6",
+                                sourceUrl = "https://raw.githubusercontent.com/fanmingming/live/main/tv/m3u/ipv6.m3u",
+                                onAdd = { viewModel.addSource("FanMingMing", it) }
+                            )
+                            BuiltInSourceItem(
+                                name = "YanG-1989 聚合",
+                                description = "国内多源聚合直播",
+                                sourceUrl = "https://raw.githubusercontent.com/YanG-1989/m3u/main/Gather.m3u",
+                                onAdd = { viewModel.addSource("YanG-1989", it) }
+                            )
+                            BuiltInSourceItem(
+                                name = "IPTV-org 港澳台",
+                                description = "香港、台湾地区频道",
+                                sourceUrl = "https://iptv-org.github.io/iptv/countries/hk.m3u",
+                                onAdd = { viewModel.addSource("IPTV-org 香港", it) }
+                            )
+                            BuiltInSourceItem(
                                 name = "IPTV-org 全球频道",
                                 description = "全球公开IPTV频道集合 - 完整版",
                                 sourceUrl = "https://iptv-org.github.io/iptv/index.m3u",
                                 onAdd = { viewModel.addSource("IPTV-org 全球", it) }
-                            )
-                            BuiltInSourceItem(
-                                name = "Free-TV 全球频道",
-                                description = "免费电视频道M3U播放列表",
-                                sourceUrl = "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u",
-                                onAdd = { viewModel.addSource("Free-TV 全球", it) }
                             )
                         }
                     }
